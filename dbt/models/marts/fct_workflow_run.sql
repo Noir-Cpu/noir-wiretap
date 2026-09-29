@@ -9,6 +9,7 @@ select
     r.status,
     r.conclusion,
     r.ci_outcome,
+    r.is_dependabot,
     r.run_attempt,
     r.duration_seconds,
     r.created_at

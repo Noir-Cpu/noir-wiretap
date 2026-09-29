@@ -1,6 +1,6 @@
 # CASE 004 / WIRETAP
 
-**Verdict: a small, tested warehouse over the NOIR systems is running end to end on real data (GitHub activity and 7,719 league matches), with metrics defined once; DISPATCH, WITNESS and prediction sources are specified but not loaded, because their data does not exist yet.**
+**Verdict: a small, tested warehouse over the NOIR systems is running end to end on real data (GitHub activity and 7,719 league matches), with metrics defined once; the INFORMANT prediction ledger is wired in and tested but still empty, and the DISPATCH and WITNESS sources are specified but not loaded because their data does not exist yet.**
 
 Live: https://noir-wiretap.noir-cpu.workers.dev
 
@@ -12,21 +12,21 @@ Data-engineering roles screen for SQL, data modelling, pipelines, data quality a
 
 All from runs on 2026-09-29. Commands in brackets.
 
-- `make run` from a warm venv: extract, freshness, `dbt build` in 46 s wall clock [`time make run`]. dbt: 231 of 231 nodes pass: 204 data tests, 25 models, 1 seed, 1 snapshot, 0 warnings [`dbt build`].
-- Python tests: 10 passed [`make test`]: rate-limit handling, CSV parsing, and the WITNESS guard failing on `voter_id`, `ballot_reference`, an unknown column and an unguarded WITNESS model.
-- All 15 mart models have every column documented (checked against the built tables) and a `unique` + `not_null` test on their key. Marts also carry relationship tests to dimensions and singular tests (rollup rows equal the sum of detail rows, rates in 0..1, counts add up).
-- Loaded: 7,719 matches (Premier League 3,850, La Liga 3,869), 6 repos, 158+ workflow runs, 29+ pull requests [`make findings`].
+- `make run` from a warm venv: extract, freshness, `dbt build`. dbt: 307 of 307 nodes pass: 273 data tests, 32 models, 1 seed, 1 snapshot, 0 warnings [`dbt build`]. The earlier 46 s wall-clock timing was before the prediction models; not re-timed.
+- Python tests: 16 passed [`make test`]: rate-limit handling, CSV and ledger parsing, the WITNESS guard failing on `voter_id`, `ballot_reference`, an unknown column and an unguarded WITNESS model, and the calibration mart against hand-computed RPS and log loss on fixture rows (fixtures exist only inside that test).
+- All 21 mart models have every column documented and a `unique` + `not_null` test on their key. Marts also carry relationship tests to dimensions and singular tests (rollup rows equal the sum of detail rows, rates in 0..1, ledger hash chain, probabilities sum to 1).
+- Loaded: 7,719 matches (Premier League 3,850, La Liga 3,869), 6 repos, 205 workflow runs, 0 predictions (ledger empty) [`make findings`].
 - Source freshness passes: GitHub load within 26 h warn / 30 h error; INFORMANT collector `fetched_at` within 12 h warn / 26 h error [`dbt source freshness`].
 - The type 2 snapshot `snap_repo` works: changing a repo description in a copy of the warehouse produced a second version and flipped `is_current` [tested by hand on a copy; not an automated test].
-- Site: axe (WCAG 2.0/2.1 A and AA) on four pages at 390 px width, light and dark: 0 violations on `/` and `/about`; on the two analysis pages only `scrollable-region-focusable` (2 and 1 nodes), which comes from Evidence's DataTable scroll container. No horizontal page scroll. Lighthouse against the deployed URL, `/analyses/home-advantage`, mobile defaults [`npx lighthouse`]: performance 39, accessibility 100, best practices 100, SEO 91; FCP 3.9 s, LCP 10.2 s, TBT 380 ms, 10.6 MiB transferred. Performance is poor: Evidence ships an in-browser DuckDB-WASM engine even for static pages. Not fixed.
+- Site, deployed URL, Lighthouse mobile defaults [`npx lighthouse`], one run per page: the static pages `/`, `/analyses/home-advantage/`, `/analyses/delivery-and-ci/`, `/analyses/calibration/`, `/about/` all score 100 / 100 / 100 / 100 (performance, accessibility, best practices, SEO), LCP 1.1 to 1.2 s, 3 to 5 KiB transferred. The interactive Evidence report at `/explore/analyses/home-advantage` scored performance 55 (LCP 22.1 s, 10.6 MiB) in the same run; it downloads a 34 MB in-browser database engine (ADR 0009). axe (WCAG 2.0/2.1 A and AA, 390 px wide, light and dark): 0 violations on the 5 static and 7 tested `/explore` pages; the earlier `scrollable-region-focusable` violation is fixed by a post-build script.
 
-Two analyses, with the numbers and the caveats: [home advantage, Premier League vs La Liga](docs/analyses/01-home-advantage.md) (Premier League 2020/21 home win rate 37.9% against 45.4% in its other nine seasons, suggestive after multiple-comparison correction; the leagues overall do not differ, 44.5% vs 45.5%) and [delivery cadence and CI reliability](docs/analyses/02-delivery-and-ci.md) (all history is one day long, so it shows a starting point, not a cadence).
+Three analyses, with the numbers and the caveats: [home advantage, Premier League vs La Liga](docs/analyses/01-home-advantage.md) (Premier League 2020/21 home win rate 37.9% against 45.4% in its other nine seasons, suggestive after multiple-comparison correction; the leagues overall do not differ, 44.5% vs 45.5%) and [delivery cadence and CI reliability](docs/analyses/02-delivery-and-ci.md) (all history is one day long, so it shows a starting point, not a cadence; CI pass rate is shown with and without Dependabot runs), and [calibration](docs/analyses/03-calibration.md) (**not enough data yet**: the prediction ledger is empty, so the page shows no accuracy number until 30 predictions are scored).
 
 ## The method
 
 ```
 GitHub REST API ──┐                         ┌── staging (views)
-                  ├─ dlt ─▶ DuckDB raw_* ─▶ dbt ── intermediate ── marts (star schema) ─▶ Evidence ─▶ Workers assets
+                  ├─ dlt ─▶ DuckDB raw_* ─▶ dbt ── intermediate ── marts (star schema) ─▶ Evidence (/explore) + static HTML (/) ─▶ Workers assets
 INFORMANT CSVs ───┘                         └── snapshot snap_repo (SCD 2)
 ```
 
@@ -39,7 +39,7 @@ INFORMANT CSVs ───┘                         └── snapshot snap_repo
 | --- | --- |
 | GitHub | built |
 | INFORMANT results | built |
-| INFORMANT predictions | extension point only (ADR 0005) |
+| INFORMANT predictions | built and tested on fixtures; ledger empty (ADR 0005) |
 | DISPATCH `order_events` | contract only (ADR 0004); not faked |
 | WITNESS | aggregates only, schema-only model plus guard (ADR 0003) |
 
@@ -51,8 +51,9 @@ Good enough to show as a modelling and data-quality exercise, not yet as the "wa
 
 ## Open leads
 
-- Calibration analysis (needs the predictions format) and on-time delivery (needs DISPATCH events).
+- On-time delivery (needs DISPATCH events).
 - WITNESS export job and minimum bucket size (ADR 0003).
 - Warehouse state on R2 Parquet instead of the Actions cache (ADR 0006).
-- Evidence loads its DuckDB-WASM binaries from jsDelivr because of the Workers 25 MiB asset limit (ADR 0008).
-- `scrollable-region-focusable` on Evidence data tables.
+- Evidence loads its DuckDB-WASM binaries from jsDelivr because of the Workers 25 MiB asset limit (ADR 0008); the default pages are static HTML (ADR 0009).
+- The calibration analysis on real data, once the ledger has 30 scored predictions.
+- Hash recomputation for the ledger chain (needs INFORMANT's hashing spec).

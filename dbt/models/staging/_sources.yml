@@ -31,12 +31,15 @@ sources:
         freshness:
           warn_after: {count: 12, period: hour}
           error_after: {count: 26, period: hour}
-      # Extension point, see docs/adr/0005-predictions-extension-point.md. Deliberately no table, columns or
-      # freshness rule: the lead defines the predictions/ format, this declaration only reserves the name.
       - name: predictions
         description: >
-          FUTURE. Model predictions published under `predictions/` in noir-informant. Format not defined yet.
-          Do not build models on it until the format ADR exists.
+          Hash-chained prediction ledger (predictions/ledger.jsonl in noir-informant), one row per published
+          prediction. dlt creates the table only once the ledger has rows; staging falls back to an empty relation.
+          No freshness rule: the ledger is legitimately silent between matchdays.
+      - name: skipped_predictions
+        description: >
+          predictions/skipped.jsonl: matches first seen under 2 hours before kickoff, with a reason. Same shape as
+          the ledger plus `reason`. Not scored; counted so the report can show coverage.
 
   - name: witness
     description: >

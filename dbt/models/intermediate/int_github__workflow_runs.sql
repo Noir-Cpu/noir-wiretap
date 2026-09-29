@@ -1,6 +1,7 @@
 -- Classifies each workflow run for CI reliability. Rules live in macros/ci_metrics.sql.
 select
     r.*,
+    r.actor_login = 'dependabot[bot]' as is_dependabot,
     case
         when r.status <> 'completed' then 'in_progress'
         when r.conclusion = 'success' then 'pass'

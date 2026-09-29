@@ -31,10 +31,14 @@ build:
 test:
 	.venv/bin/pytest -q
 
-# Builds the static Evidence site into report/build from the warehouse.
+# site/ = lightweight static pages at / plus the interactive Evidence report at /explore (ADR 0009).
 site: report/node_modules/.installed
+	rm -rf report/build
 	cd report && npm run sources && npm run build:strict
 	node scripts/externalize_wasm.mjs
+	rm -rf site && mkdir -p site
+	cp -r report/build site/explore
+	.venv/bin/python scripts/build_static.py
 
 deploy: site
 	npx wrangler deploy

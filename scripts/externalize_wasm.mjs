@@ -22,3 +22,20 @@ for (const variant of ["eh", "mvp"]) {
   rmSync(join(assets, wasm));
   console.log(`duckdb-${variant}.wasm -> ${url}`);
 }
+
+// Evidence's DataTable wraps wide tables in a scrollable div that keyboard users cannot focus (axe rule
+// scrollable-region-focusable). Make each such region focusable and named as soon as it appears.
+import { readdirSync as ls, statSync } from "node:fs";
+const fix = `<script>new MutationObserver(function(){document.querySelectorAll('.scrollbox:not([tabindex])').forEach(function(el){el.setAttribute('tabindex','0');el.setAttribute('role','region');el.setAttribute('aria-label','Scrollable table')})}).observe(document.documentElement,{childList:true,subtree:true})</script>`;
+function walk(dir) {
+  for (const f of ls(dir)) {
+    const p = join(dir, f);
+    if (statSync(p).isDirectory()) walk(p);
+    else if (f.endsWith(".html")) {
+      const t = readFileSync(p, "utf8");
+      if (!t.includes("scrollbox:not")) writeFileSync(p, t.replace("</body>", fix + "</body>"));
+    }
+  }
+}
+walk(join(root, "build"));
+console.log("focusable scroll regions patched");

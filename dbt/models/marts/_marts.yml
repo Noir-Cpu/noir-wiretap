@@ -227,6 +227,9 @@ models:
         data_tests: [not_null]
       - name: conclusion
         description: GitHub run conclusion; null while the run is not completed.
+      - name: is_dependabot
+        description: True when the run was triggered by dependabot[bot] (updater runs and PR checks on its branches).
+        data_tests: [not_null]
       - name: ci_outcome
         description: pass, fail, excluded (cancelled, skipped, neutral, action_required) or in_progress.
         data_tests: [not_null, {accepted_values: {arguments: {values: ['pass', 'fail', 'excluded', 'in_progress']}}}]
@@ -433,6 +436,17 @@ models:
         data_tests: [not_null]
       - name: ci_pass_rate
         description: passed_runs divided by decided_runs. THE CI pass rate metric; null when no run was decided.
+      - name: decided_runs_excl_dependabot
+        description: decided_runs leaving out runs triggered by dependabot[bot].
+        data_tests: [not_null]
+      - name: passed_runs_excl_dependabot
+        description: passed_runs leaving out dependabot[bot] runs.
+        data_tests: [not_null]
+      - name: failed_runs_excl_dependabot
+        description: failed_runs leaving out dependabot[bot] runs.
+        data_tests: [not_null]
+      - name: ci_pass_rate_excl_dependabot
+        description: passed divided by decided runs, leaving out dependabot[bot] runs; null when none. Shown next to ci_pass_rate.
       - name: median_duration_seconds
         description: Median duration of decided runs.
 
@@ -510,5 +524,186 @@ models:
         data_tests: [not_null]
       - name: ci_pass_rate
         description: All-time CI pass rate from mart_ci_reliability; null when no run was decided.
+      - name: ci_decided_runs_excl_dependabot
+        description: Decided runs leaving out dependabot[bot] runs.
+        data_tests: [not_null]
+      - name: ci_pass_rate_excl_dependabot
+        description: All-time CI pass rate leaving out dependabot[bot] runs, from mart_ci_reliability.
       - name: ci_median_duration_seconds
         description: Median duration of decided runs.
+
+  - name: fct_prediction
+    description: >
+      Fact table, one row per prediction in INFORMANT's hash-chained ledger, joined to the result when the match has
+      been played. Empty until the ledger has rows. Scores are RPS and log loss on ordered outcomes H, D, A.
+    columns:
+      - name: prediction_key
+        description: The ledger record hash.
+        data_tests: [unique, not_null]
+      - name: ledger_seq
+        description: Sequence number in the ledger.
+        data_tests: [unique, not_null]
+      - name: prev_hash
+        description: Hash of the previous ledger record; null for the first.
+      - name: model_name
+        description: Model identifier.
+        data_tests: [not_null]
+      - name: params_sha
+        description: Hash of the model parameters.
+      - name: data_sha
+        description: Hash of the training data.
+      - name: match_key
+        description: fct_match key once the result exists; null before the match or if team names do not match.
+      - name: league_key
+        description: League code.
+        data_tests: [not_null]
+      - name: date_key
+        description: Match date.
+        data_tests: [not_null]
+      - name: home_team_key
+        description: md5 of the home team name (dim_team.team_key).
+        data_tests: [not_null]
+      - name: away_team_key
+        description: md5 of the away team name.
+        data_tests: [not_null]
+      - name: home_team
+        description: Home team name as published in the ledger.
+        data_tests: [not_null]
+      - name: away_team
+        description: Away team name as published in the ledger.
+        data_tests: [not_null]
+      - name: kickoff_at
+        description: Kick-off time (UTC), null if not published.
+      - name: published_at
+        description: When the prediction was published (UTC).
+        data_tests: [not_null]
+      - name: hours_before_kickoff
+        description: Hours between publication and kick-off; null without a kick-off time.
+      - name: p_home
+        description: Model probability of a home win.
+        data_tests: [not_null]
+      - name: p_draw
+        description: Model probability of a draw.
+        data_tests: [not_null]
+      - name: p_away
+        description: Model probability of an away win.
+        data_tests: [not_null]
+      - name: book_home
+        description: Bookmaker home-win probability, margin removed; null if no odds.
+      - name: book_draw
+        description: Bookmaker draw probability.
+      - name: book_away
+        description: Bookmaker away-win probability.
+      - name: has_book
+        description: True when bookmaker probabilities exist.
+        data_tests: [not_null]
+      - name: result
+        description: H, D or A once the match has a result; null before.
+      - name: is_scored
+        description: True when the result is known.
+        data_tests: [not_null]
+      - name: is_first_for_match_model
+        description: True for the earliest ledger prediction per match and model; only these are analysed.
+        data_tests: [not_null]
+      - name: rps
+        description: Ranked probability score of the model prediction (lower is better); null until scored.
+      - name: log_loss
+        description: Negative log of the probability given to the actual outcome; null until scored.
+      - name: book_rps
+        description: RPS of the bookmaker probabilities on the same match.
+      - name: book_log_loss
+        description: Log loss of the bookmaker probabilities on the same match.
+
+  - name: fct_skipped_prediction
+    description: Matches the predictor skipped because they were first seen under 2 hours before kick-off. Empty until any exist.
+    columns:
+      - name: skipped_prediction_key
+        description: The ledger record hash.
+        data_tests: [unique, not_null]
+      - name: ledger_seq
+        description: Sequence number in skipped.jsonl.
+      - name: league_key
+        description: League code.
+        data_tests: [not_null]
+      - name: date_key
+        description: Match date.
+        data_tests: [not_null]
+      - name: home_team
+        description: Home team.
+        data_tests: [not_null]
+      - name: away_team
+        description: Away team.
+        data_tests: [not_null]
+      - name: kickoff_at
+        description: Kick-off (UTC).
+      - name: published_at
+        description: When the skip was recorded.
+      - name: reason
+        description: Why the prediction was skipped.
+
+  - name: mart_calibration
+    description: >
+      Forecast quality per model and month, plus an all_time row per model. Metrics defined once in
+      macros/calibration_metrics.sql. Rows with has_enough_data = false must not be shown as a headline.
+    columns:
+      - name: calibration_key
+        description: md5 of model, grain and period.
+        data_tests: [unique, not_null]
+      - name: model_name
+        description: Model identifier.
+        data_tests: [not_null]
+      - name: grain
+        description: month or all_time.
+        data_tests: [not_null, {accepted_values: {arguments: {values: ['month', 'all_time']}}}]
+      - name: period_start
+        description: First day of the match month; null for all_time.
+      - name: scored_predictions
+        description: Scored first predictions in scope.
+        data_tests: [not_null]
+      - name: mean_rps
+        description: Mean ranked probability score of the model.
+        data_tests: [not_null]
+      - name: mean_log_loss
+        description: Mean log loss of the model.
+        data_tests: [not_null]
+      - name: book_matches
+        description: Scored matches that have bookmaker probabilities.
+        data_tests: [not_null]
+      - name: model_rps_on_book_matches
+        description: Model mean RPS on only the matches with bookmaker probabilities.
+      - name: book_mean_rps
+        description: Bookmaker mean RPS on those same matches.
+      - name: rps_minus_book
+        description: model_rps_on_book_matches minus book_mean_rps; negative means the model was better.
+      - name: model_log_loss_on_book_matches
+        description: Model mean log loss on the bookmaker-covered matches.
+      - name: book_mean_log_loss
+        description: Bookmaker mean log loss on the same matches.
+      - name: has_enough_data
+        description: True when scored_predictions is at least var(min_scored_predictions), currently 30.
+        data_tests: [not_null]
+
+  - name: mart_calibration_bins
+    description: Reliability table, mean predicted probability against observed frequency per model, outcome and 10%-wide bin.
+    columns:
+      - name: calibration_bin_key
+        description: md5 of model, outcome and bin.
+        data_tests: [unique, not_null]
+      - name: model_name
+        description: Model identifier.
+        data_tests: [not_null]
+      - name: outcome
+        description: home, draw or away.
+        data_tests: [not_null, {accepted_values: {arguments: {values: ['home', 'draw', 'away']}}}]
+      - name: bin_index
+        description: 0 for probabilities in [0, 0.1), up to 9 for [0.9, 1.0].
+        data_tests: [not_null]
+      - name: predictions
+        description: Number of (prediction, outcome) pairs in the bin.
+        data_tests: [not_null]
+      - name: mean_predicted
+        description: Mean predicted probability in the bin.
+        data_tests: [not_null]
+      - name: observed_frequency
+        description: Share of those pairs where the outcome happened.
+        data_tests: [not_null]

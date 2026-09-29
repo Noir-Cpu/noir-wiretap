@@ -66,3 +66,6 @@ plugins:
 
   datasources:
     "@evidence-dev/duckdb": {}
+
+deployment:
+  basePath: /explore

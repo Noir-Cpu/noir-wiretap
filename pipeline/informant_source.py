@@ -1,7 +1,7 @@
 """INFORMANT match results (Premier League E0, La Liga SP1) from the public noir-informant repo.
 
-Reads only result and match-statistics columns. Betting odds are ignored on purpose: the source is
-model-agnostic, and predictions will arrive separately (see docs/adr/0005-predictions-extension-point.md).
+Reads only result and match-statistics columns. Betting odds in the results files are ignored on purpose: the results source is
+model-agnostic. Predictions come from the separate append-only ledger (predictions/ledger.jsonl, see docs/adr/0005).
 Set INFORMANT_LOCAL_DIR to a checkout's data/ directory to read from disk instead of GitHub.
 """
 from __future__ import annotations
@@ -31,6 +31,47 @@ def _fetch(path: str) -> str:
     resp = requests.get(f"{RAW}/{path}", timeout=30)
     resp.raise_for_status()
     return resp.text
+
+
+def _fetch_optional(path: str) -> str:
+    """The ledger files exist but may be empty (no fixtures yet); a missing file is treated as empty."""
+    try:
+        return _fetch(path)
+    except (FileNotFoundError, requests.HTTPError) as exc:
+        status = getattr(getattr(exc, "response", None), "status_code", 404)
+        if isinstance(exc, FileNotFoundError) or status == 404:
+            return ""
+        raise
+
+
+def _triple(value: list | None, prefix: str) -> dict:
+    keys = (f"{prefix}_home", f"{prefix}_draw", f"{prefix}_away")
+    if not value:
+        return dict.fromkeys(keys)
+    if len(value) != 3:
+        raise ValueError(f"{prefix} must have 3 entries, got {value!r}")
+    return dict(zip(keys, (float(v) for v in value)))
+
+
+def parse_ledger(text: str, skipped: bool = False) -> Iterator[dict]:
+    """Flatten hash-chained JSONL records: one row per line, nested match/probs/book unpacked."""
+    for n, line in enumerate(text.splitlines(), start=1):
+        if not line.strip():
+            continue
+        rec = json.loads(line)
+        match = rec["match"]
+        row = {
+            "seq": rec["seq"], "prev": rec.get("prev"), "hash": rec["hash"],
+            "match_division": match["division"], "match_date": match["date"],
+            "match_home": match["home"], "match_away": match["away"],
+            "kickoff_utc": match.get("kickoff_utc"),
+            **_triple(rec.get("probs"), "p"), **_triple(rec.get("book"), "book"),
+            "model": rec.get("model"), "params_sha": rec.get("params_sha"),
+            "data_sha": rec.get("data_sha"), "published_at": rec.get("published_at"),
+        }
+        if skipped:
+            row["reason"] = rec.get("reason")
+        yield row
 
 
 def parse_results(text: str, league: str, season: str) -> Iterator[dict]:
@@ -67,4 +108,12 @@ def informant_source():
             season = parts[2].removesuffix(".csv")
             yield from parse_results(_fetch(path), parts[1], season)
 
-    return manifest_resource, results_resource
+    @dlt.resource(name="predictions", write_disposition="merge", primary_key="hash")
+    def predictions_resource() -> Iterator[dict]:
+        yield from parse_ledger(_fetch_optional("predictions/ledger.jsonl"))
+
+    @dlt.resource(name="skipped_predictions", write_disposition="merge", primary_key="hash")
+    def skipped_resource() -> Iterator[dict]:
+        yield from parse_ledger(_fetch_optional("predictions/skipped.jsonl"), skipped=True)
+
+    return manifest_resource, results_resource, predictions_resource, skipped_resource

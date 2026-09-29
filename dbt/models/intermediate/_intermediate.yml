@@ -13,6 +13,7 @@ models:
     description: Workflow runs with a ci_outcome classification and duration.
     columns:
       - {name: run_id, description: Run id., data_tests: [unique, not_null]}
+      - {name: is_dependabot, description: "Triggered by dependabot[bot].", data_tests: [not_null]}
       - name: ci_outcome
         description: pass, fail, excluded or in_progress.
         data_tests:

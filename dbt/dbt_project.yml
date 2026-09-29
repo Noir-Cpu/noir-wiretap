@@ -11,6 +11,8 @@ macro-paths: [macros]
 clean-targets: [target, dbt_packages]
 
 vars:
+  # Below this many scored predictions no headline forecast metric is published (see mart_calibration).
+  min_scored_predictions: 30
   # Columns a WITNESS-sourced model may contain. Anything else fails `witness_aggregates_only`.
   # See docs/adr/0003-witness-aggregates-only.md.
   witness_allowed_columns:

@@ -40,6 +40,10 @@ select
     c.failed_runs,
     c.excluded_runs,
     c.ci_pass_rate,
+    c.decided_runs_excl_dependabot,
+    c.passed_runs_excl_dependabot,
+    c.failed_runs_excl_dependabot,
+    c.ci_pass_rate_excl_dependabot,
     c.median_duration_seconds
 from combined as c
 inner join {{ ref('dim_repo') }} as r on r.repo_key = c.repo_key

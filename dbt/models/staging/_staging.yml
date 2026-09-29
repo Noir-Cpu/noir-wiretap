@@ -107,6 +107,40 @@ models:
       - {name: fetched_at, description: When the collector last fetched the file., data_tests: [not_null]}
       - {name: row_count, description: Rows the collector recorded.}
       - {name: sha256, description: Content hash.}
+  - name: stg_informant__predictions
+    description: Typed ledger predictions. Zero rows while the ledger is empty.
+    columns:
+      - {name: prediction_id, description: Ledger record hash., data_tests: [unique, not_null]}
+      - {name: ledger_seq, description: Ledger sequence number., data_tests: [unique, not_null]}
+      - {name: prev_hash, description: Hash of the previous record.}
+      - {name: league_code, description: Division code., data_tests: [not_null, {accepted_values: {arguments: {values: ['E0', 'SP1']}}}]}
+      - {name: match_date, description: Match date., data_tests: [not_null]}
+      - {name: home_team, description: Home team., data_tests: [not_null]}
+      - {name: away_team, description: Away team., data_tests: [not_null]}
+      - {name: kickoff_at, description: Kick-off UTC.}
+      - {name: p_home, description: P(home win)., data_tests: [not_null]}
+      - {name: p_draw, description: P(draw)., data_tests: [not_null]}
+      - {name: p_away, description: P(away win)., data_tests: [not_null]}
+      - {name: book_home, description: Bookmaker P(home), margin removed.}
+      - {name: book_draw, description: Bookmaker P(draw).}
+      - {name: book_away, description: Bookmaker P(away).}
+      - {name: model_name, description: Model identifier., data_tests: [not_null]}
+      - {name: params_sha, description: Parameters hash.}
+      - {name: data_sha, description: Data hash.}
+      - {name: published_at, description: Publication time., data_tests: [not_null]}
+  - name: stg_informant__skipped_predictions
+    description: Typed skipped.jsonl records. Zero rows while there are none.
+    columns:
+      - {name: skipped_id, description: Ledger record hash., data_tests: [unique, not_null]}
+      - {name: ledger_seq, description: Sequence number.}
+      - {name: league_code, description: Division code.}
+      - {name: match_date, description: Match date.}
+      - {name: home_team, description: Home team.}
+      - {name: away_team, description: Away team.}
+      - {name: kickoff_at, description: Kick-off UTC.}
+      - {name: model_name, description: Model identifier.}
+      - {name: published_at, description: When recorded.}
+      - {name: reason, description: Why skipped.}
   - name: stg_witness__poll_turnout
     description: >
       FUTURE. Schema-only, zero rows. Aggregate turnout per poll and cast counts per hour bucket. Guarded by
@@ -127,3 +161,4 @@ seeds:
       - {name: league_code, description: Division code., data_tests: [unique, not_null]}
       - {name: league_name, description: Display name., data_tests: [not_null]}
       - {name: country, description: Country., data_tests: [not_null]}
+

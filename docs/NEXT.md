@@ -1,16 +1,26 @@
 # NEXT
 
+## Decided by John (2026-09-29)
+
+- Q2: WITNESS hourly buckets under 10 ballots are merged into the neighbouring hour (ADR 0003; a requirement on the future export).
+- Q3: DISPATCH `order_events` contract accepted, with `is_simulated` (ADR 0004).
+- Q4: CI pass rate shown with and without Dependabot runs (done).
+- Q5: warehouse state stays in the Actions cache for now (ADR 0006).
+- Predictions format: read from `predictions/ledger.jsonl` and `skipped.jsonl` (ADR 0005, done, ledger currently empty).
+
 ## Actions only John can do, in order
 
 1. Set the Cloudflare secrets so the nightly workflow publishes (see docs/SETUP.md):
    `gh secret set CLOUDFLARE_API_TOKEN --repo Noir-Cpu/noir-wiretap` and `gh secret set CLOUDFLARE_ACCOUNT_ID --repo Noir-Cpu/noir-wiretap`.
 2. Trigger a first nightly run to confirm: `gh workflow run nightly.yml --repo Noir-Cpu/noir-wiretap`.
-3. Decide the questions below.
 
-## Questions
+## Open questions
 
-1. Which format will INFORMANT predictions use (columns, model-version field, one row per match per model)? Default: wait for your definition; the extension point is ADR 0005.
-2. WITNESS: will the WITNESS export job emit only the five allowed columns, and what minimum poll size before an hourly bucket is published? Default: buckets under 10 ballots are merged into the neighbouring hour (not decided).
-3. DISPATCH: accept the `order_events` contract in ADR 0004, and add an `is_simulated` flag? Default: yes to both.
-4. Move the warehouse state from the Actions cache to Parquet on R2 (needs a bucket and keys)? Default: not until the SCD history matters.
-5. Should CI pass rate exclude Dependabot updater runs? Default: keep them in for now, and add a `workflow_kind` split when there is more data.
+1. What is INFORMANT's ledger hashing scheme (algorithm and fields hashed)? Default: keep checking only the `prev` links until it is written down; then recompute hashes in a dbt test.
+2. Team names in the ledger must match the results files (football-data spelling). Default: assume they do; a warning test flags predictions with no matching result after 3 days.
+3. The 30-prediction floor for showing a calibration number: keep it? Default: yes.
+
+## Still open
+
+- Calibration on real data (waits for the ledger). DISPATCH and WITNESS sources (do not exist yet).
+- Evidence at `/explore` is slow to open (10.6 MiB, in-browser DuckDB); the static pages are the default.

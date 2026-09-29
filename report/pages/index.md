@@ -29,4 +29,5 @@ select * from wiretap.run_status
 
 - [Home advantage: Premier League against La Liga](/analyses/home-advantage)
 - [Delivery cadence and CI reliability across the NOIR repos](/analyses/delivery-and-ci)
+- [How well calibrated is INFORMANT?](/analyses/calibration)
 - [Sources, limits and what is deliberately left out](/about)

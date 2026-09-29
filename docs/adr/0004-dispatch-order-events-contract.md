@@ -1,6 +1,6 @@
 # ADR 0004: DISPATCH `order_events` source contract (future source, not built)
 
-Status: proposed. No DISPATCH data exists yet, so nothing is loaded and no fake data is generated. This is what WIRETAP will expect once it does.
+Status: accepted (John, 2026-09-29), including the `is_simulated` flag below. Still a future source. No DISPATCH data exists yet, so nothing is loaded and no fake data is generated. This is what WIRETAP will expect once it does.
 
 Shape: an append-only table `order_events` in DISPATCH's database, exposed to WIRETAP through a read-only role (or a view) limited to these columns.
 
@@ -14,6 +14,7 @@ Shape: an append-only table `order_events` in DISPATCH's database, exposed to WI
 | `site_id`, `vehicle_id` | text | Opaque business identifiers. |
 | `promised_by` | timestamptz | Set on `created`; needed for on-time delivery. |
 | `schema_version` | int | Bumped on breaking changes. |
+| `is_simulated` | boolean | True for simulator traffic. Every DISPATCH metric is reported with and without simulated events, never silently mixed. |
 
 Not exposed: customer names, phone numbers, addresses, coordinates finer than the site.
 
@@ -21,4 +22,4 @@ Loading: dlt `merge` on `event_id`, incremental on `recorded_at` with a lookback
 
 Planned models: `stg_dispatch__order_events`, `int_dispatch__orders` (one row per order, first and last event times), `fct_order`, `dim_site`, and the metric `on_time_delivery_rate` = delivered orders with `delivered_at <= promised_by` divided by delivered orders, defined once by the same macro pattern as ADR 0002.
 
-Open questions for the DISPATCH side: whether the simulator writes to the same table as real traffic (needs an `is_simulated` flag to keep the metric honest), and who owns the schema version bump.
+Open question for the DISPATCH side: who owns the schema version bump.
