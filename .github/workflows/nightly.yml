@@ -17,13 +17,13 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12", cache: pip }
       - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm, cache-dependency-path: report/package-lock.json }
       # The warehouse file carries dlt incremental state and the repo snapshot history (SCD type 2).
       # The cache is best-effort: if it is evicted, history restarts. See docs/adr/0006-warehouse-state-in-actions-cache.md.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         id: warehouse
         with:
           path: warehouse
@@ -34,7 +34,7 @@ jobs:
       # Fails the workflow (and skips the deploy) if INFORMANT's collector or our GitHub load is older than its threshold.
       - run: make freshness
       - run: make build
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         with:
           path: warehouse
           key: warehouse-${{ github.run_id }}
