@@ -1,0 +1,4 @@
+name: wiretap
+type: duckdb
+options:
+  filename: ../../../warehouse/wiretap.duckdb

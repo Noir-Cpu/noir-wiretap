@@ -1,0 +1,9 @@
+wiretap:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('WIRETAP_DB', '../warehouse/wiretap.duckdb') }}"
+      threads: 4
+      settings:
+        TimeZone: UTC

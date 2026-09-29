@@ -1,0 +1,21 @@
+{
+  "name": "noir-wiretap-report",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "sources": "evidence sources",
+    "sources:strict": "evidence sources --strict",
+    "dev": "evidence dev",
+    "build": "evidence build",
+    "build:strict": "evidence build:strict",
+    "preview": "evidence preview"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "@evidence-dev/core-components": "5.4.2",
+    "@evidence-dev/duckdb": "2.0.1",
+    "@evidence-dev/evidence": "40.1.8",
+    "typescript": "5.4.2"
+  }
+}

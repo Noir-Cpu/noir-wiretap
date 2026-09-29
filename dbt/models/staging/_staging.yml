@@ -1,0 +1,129 @@
+version: 2
+
+models:
+  - name: stg_github__repos
+    description: Typed, renamed copy of raw_github.repos.
+    columns:
+      - {name: repo_id, description: GitHub repository id., data_tests: [unique, not_null]}
+      - {name: repo_name, description: Repository name., data_tests: [unique, not_null]}
+      - {name: full_name, description: owner/name.}
+      - {name: description, description: Repository description.}
+      - {name: language, description: Primary language.}
+      - {name: default_branch, description: Default branch.}
+      - {name: is_archived, description: Archived flag.}
+      - {name: is_fork, description: Fork flag.}
+      - {name: visibility, description: public or private.}
+      - {name: topics, description: Comma-separated topics.}
+      - {name: stargazers_count, description: Stars at load time.}
+      - {name: forks_count, description: Forks at load time.}
+      - {name: open_issues_count, description: Open issues and PRs at load time.}
+      - {name: created_at, description: Creation time.}
+      - {name: pushed_at, description: Last push time.}
+      - {name: updated_at, description: Last update time.}
+      - {name: loaded_at, description: When dlt loaded this row.}
+  - name: stg_github__commits
+    description: Commits, without author names or emails.
+    columns:
+      - {name: repo_name, description: Repository name., data_tests: [not_null]}
+      - {name: commit_sha, description: Commit sha., data_tests: [not_null]}
+      - {name: committed_at, description: Committer date., data_tests: [not_null]}
+      - {name: authored_at, description: Author date.}
+      - {name: author_login, description: Public login of the author.}
+      - {name: committer_login, description: Public login of the committer.}
+      - {name: message_headline, description: First line of the message.}
+  - name: stg_github__workflow_runs
+    description: Workflow runs.
+    columns:
+      - {name: repo_name, description: Repository name., data_tests: [not_null]}
+      - {name: run_id, description: Run id., data_tests: [unique, not_null]}
+      - {name: workflow_id, description: Workflow id.}
+      - {name: workflow_name, description: Workflow name.}
+      - {name: event, description: Trigger event.}
+      - {name: head_branch, description: Branch.}
+      - {name: status, description: Run status., data_tests: [not_null]}
+      - {name: conclusion, description: Run conclusion; null until completed.}
+      - {name: run_number, description: Run number.}
+      - {name: run_attempt, description: Attempt number.}
+      - {name: created_at, description: Created time., data_tests: [not_null]}
+      - {name: run_started_at, description: Started time.}
+      - {name: updated_at, description: Last update time.}
+      - {name: actor_login, description: Login that triggered the run.}
+  - name: stg_github__pull_requests
+    description: Pull requests.
+    columns:
+      - {name: repo_name, description: Repository name., data_tests: [not_null]}
+      - {name: pull_request_id, description: PR id., data_tests: [unique, not_null]}
+      - {name: pull_request_number, description: Number in repo.}
+      - {name: state, description: open or closed.}
+      - {name: is_draft, description: Draft flag.}
+      - {name: created_at, description: Created time.}
+      - {name: updated_at, description: Updated time.}
+      - {name: closed_at, description: Closed time.}
+      - {name: merged_at, description: Merged time.}
+      - {name: author_login, description: Author login.}
+      - {name: base_ref, description: Base branch.}
+  - name: stg_github__releases
+    description: Releases (empty until the first one exists).
+    columns:
+      - {name: repo_name, description: Repository name.}
+      - {name: release_id, description: Release id.}
+      - {name: tag_name, description: Tag.}
+      - {name: release_name, description: Title.}
+      - {name: is_draft, description: Draft flag.}
+      - {name: is_prerelease, description: Pre-release flag.}
+      - {name: created_at, description: Created time.}
+      - {name: published_at, description: Published time.}
+  - name: stg_informant__matches
+    description: Typed match rows from INFORMANT results. Model-agnostic; carries no predictions.
+    columns:
+      - name: match_id
+        description: md5 of league, season, date, home and away team.
+        data_tests: [unique, not_null]
+      - {name: league_code, description: E0 or SP1., data_tests: [not_null]}
+      - {name: season_code, description: Season code such as 2425., data_tests: [not_null]}
+      - name: match_date
+        description: Parsed match date.
+        data_tests: [not_null]
+      - {name: kickoff_time, description: Kick-off time; null in older seasons.}
+      - {name: home_team, description: Home team name., data_tests: [not_null]}
+      - {name: away_team, description: Away team name., data_tests: [not_null]}
+      - {name: home_goals, description: Full-time home goals.}
+      - {name: away_goals, description: Full-time away goals.}
+      - {name: result, description: H, D or A.}
+      - {name: home_goals_ht, description: Half-time home goals.}
+      - {name: away_goals_ht, description: Half-time away goals.}
+      - {name: home_shots, description: Home shots.}
+      - {name: away_shots, description: Away shots.}
+      - {name: home_shots_on_target, description: Home shots on target.}
+      - {name: away_shots_on_target, description: Away shots on target.}
+      - {name: home_yellows, description: Home yellows.}
+      - {name: away_yellows, description: Away yellows.}
+      - {name: home_reds, description: Home reds.}
+      - {name: away_reds, description: Away reds.}
+  - name: stg_informant__collector_manifest
+    description: The collector manifest, one row per data file.
+    columns:
+      - {name: file_path, description: Path of the data file in noir-informant., data_tests: [unique, not_null]}
+      - {name: fetched_at, description: When the collector last fetched the file., data_tests: [not_null]}
+      - {name: row_count, description: Rows the collector recorded.}
+      - {name: sha256, description: Content hash.}
+  - name: stg_witness__poll_turnout
+    description: >
+      FUTURE. Schema-only, zero rows. Aggregate turnout per poll and cast counts per hour bucket. Guarded by
+      witness_aggregates_only: any column outside var('witness_allowed_columns') fails the build.
+    columns:
+      - {name: poll_id, description: Poll identifier (public poll, not a person).}
+      - {name: hour_bucket_utc, description: Cast time truncated to the hour.}
+      - {name: eligible_count, description: Number of eligible voters for the poll (a count).}
+      - {name: ballots_cast_count, description: Number of ballots cast in total (a count).}
+      - {name: cast_count, description: Number of ballots cast in this hour bucket (a count).}
+    data_tests:
+      - witness_aggregates_only
+
+seeds:
+  - name: leagues
+    description: League code to name mapping.
+    columns:
+      - {name: league_code, description: Division code., data_tests: [unique, not_null]}
+      - {name: league_name, description: Display name., data_tests: [not_null]}
+      - {name: country, description: Country., data_tests: [not_null]}

@@ -1,0 +1,10 @@
+snapshots:
+  - name: snap_repo
+    description: >
+      Type 2 history of repo attributes that change rarely (description, language, default branch, archived,
+      topics). Star and fork counts are excluded on purpose: they change daily and would create noise versions.
+    relation: ref('stg_github__repos')
+    config:
+      unique_key: repo_id
+      strategy: check
+      check_cols: [description, language, default_branch, is_archived, topics]

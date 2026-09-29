@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: int_football__matches
+    description: Completed matches with season label, points and typed fields.
+    columns:
+      - {name: match_id, description: Match id., data_tests: [unique, not_null]}
+      - {name: league_code, description: League code., data_tests: [not_null]}
+      - {name: season_code, description: Season code., data_tests: [not_null]}
+      - {name: season_start_year, description: Start year., data_tests: [not_null]}
+      - {name: season_label, description: Label such as 2024/25., data_tests: [not_null]}
+  - name: int_github__workflow_runs
+    description: Workflow runs with a ci_outcome classification and duration.
+    columns:
+      - {name: run_id, description: Run id., data_tests: [unique, not_null]}
+      - name: ci_outcome
+        description: pass, fail, excluded or in_progress.
+        data_tests:
+          - not_null
+          - accepted_values: {arguments: {values: ['pass', 'fail', 'excluded', 'in_progress']}}

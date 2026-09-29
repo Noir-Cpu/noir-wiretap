@@ -1,0 +1,41 @@
+name: wiretap
+version: "1.0.0"
+config-version: 2
+profile: wiretap
+
+model-paths: [models]
+seed-paths: [seeds]
+snapshot-paths: [snapshots]
+test-paths: [tests]
+macro-paths: [macros]
+clean-targets: [target, dbt_packages]
+
+vars:
+  # Columns a WITNESS-sourced model may contain. Anything else fails `witness_aggregates_only`.
+  # See docs/adr/0003-witness-aggregates-only.md.
+  witness_allowed_columns:
+    - poll_id
+    - hour_bucket_utc
+    - eligible_count
+    - ballots_cast_count
+    - cast_count
+
+models:
+  wiretap:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+
+seeds:
+  wiretap:
+    +schema: staging
+
+snapshots:
+  wiretap:
+    +schema: snapshots

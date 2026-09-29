@@ -1,0 +1,7 @@
+{
+  "case": "004",
+  "codename": "WIRETAP",
+  "status": "mvp",
+  "liveUrl": "https://noir-wiretap.noir-cpu.workers.dev",
+  "stack": ["dlt", "duckdb", "dbt", "evidence", "cloudflare-workers-assets", "github-actions"]
+}

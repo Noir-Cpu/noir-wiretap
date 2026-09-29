@@ -1,0 +1,13 @@
+.venv
+warehouse
+__pycache__
+.pytest_cache
+dbt/target
+dbt/logs
+dbt/dbt_packages
+node_modules
+.wrangler
+.env*
+!.env.example
+*.log
+.dlt

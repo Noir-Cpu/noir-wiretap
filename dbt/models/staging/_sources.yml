@@ -1,0 +1,46 @@
+version: 2
+
+sources:
+  - name: github
+    description: GitHub REST API activity for the Noir-Cpu `noir-*` repos, loaded by dlt (pipeline/github_source.py).
+    schema: raw_github
+    tables:
+      - name: repos
+        description: One row per repo, replaced on every load, so its load time is the pipeline's heartbeat.
+        loaded_at_field: "to_timestamp(cast(_dlt_load_id as double))"
+        freshness:
+          warn_after: {count: 26, period: hour}
+          error_after: {count: 30, period: hour}
+      - name: commits
+      - name: workflow_runs
+      - name: pull_requests
+      - name: releases
+        description: Not created by dlt until the first release exists; staging falls back to an empty relation.
+
+  - name: informant
+    description: Match results from the public noir-informant repo (data/results), loaded by dlt.
+    schema: raw_informant
+    tables:
+      - name: results
+        description: One row per match, raw strings. Only result and match-statistics columns are kept, never odds.
+      - name: collector_manifest
+        description: >
+          The collector's own manifest (data/manifest.json). `fetched_at` is when the INFORMANT collector last
+          fetched each file, so this checks the upstream collector, not just our load.
+        loaded_at_field: fetched_at
+        freshness:
+          warn_after: {count: 12, period: hour}
+          error_after: {count: 26, period: hour}
+      # Extension point, see docs/adr/0005-predictions-extension-point.md. Deliberately no table, columns or
+      # freshness rule: the lead defines the predictions/ format, this declaration only reserves the name.
+      - name: predictions
+        description: >
+          FUTURE. Model predictions published under `predictions/` in noir-informant. Format not defined yet.
+          Do not build models on it until the format ADR exists.
+
+  - name: witness
+    description: >
+      FUTURE, AGGREGATES ONLY. Per-poll turnout and hour-bucketed cast counts exported by WITNESS.
+      Ballots and participation records never enter the warehouse (docs/adr/0003-witness-aggregates-only.md).
+    tables:
+      - name: poll_turnout

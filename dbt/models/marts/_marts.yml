@@ -1,0 +1,514 @@
+version: 2
+
+models:
+  - name: dim_league
+    description: One row per league in the warehouse (seed-backed).
+    columns:
+      - name: league_key
+        description: football-data.co.uk division code (E0, SP1).
+        data_tests: [unique, not_null, {accepted_values: {arguments: {values: ['E0', 'SP1']}}}]
+      - name: league_name
+        description: Display name.
+        data_tests: [not_null]
+      - name: country
+        description: Country of the league.
+        data_tests: [not_null]
+
+  - name: dim_season
+    description: One row per season code present in the results.
+    columns:
+      - name: season_key
+        description: Four-digit season code, first two digits start year and last two end year (2425 is 2024/25).
+        data_tests: [unique, not_null]
+      - name: season_label
+        description: Display label such as 2024/25.
+        data_tests: [not_null]
+      - name: season_start_year
+        description: Calendar year in which the season starts.
+        data_tests: [not_null]
+
+  - name: dim_team
+    description: One row per team name across both leagues.
+    columns:
+      - name: team_key
+        description: md5 of the team name (a stable surrogate key).
+        data_tests: [unique, not_null]
+      - name: team_name
+        description: Team name as published by the source.
+        data_tests: [unique, not_null]
+      - name: first_season_key
+        description: Earliest season code in which the team appears.
+        data_tests: [not_null]
+      - name: last_season_key
+        description: Latest season code in which the team appears.
+        data_tests: [not_null]
+      - name: league_seasons_played
+        description: Number of distinct league-seasons the team appears in.
+        data_tests: [not_null]
+
+  - name: dim_date
+    description: Calendar dimension, 2016-07-01 to 2028-12-31.
+    columns:
+      - name: date_key
+        description: The calendar date.
+        data_tests: [unique, not_null]
+      - name: year
+        description: Calendar year.
+        data_tests: [not_null]
+      - name: month
+        description: Calendar month number.
+        data_tests: [not_null]
+      - name: month_start
+        description: First day of the month.
+        data_tests: [not_null]
+      - name: week_start
+        description: Monday of the ISO week.
+        data_tests: [not_null]
+      - name: iso_day_of_week
+        description: 1 (Monday) to 7 (Sunday).
+        data_tests: [not_null]
+      - name: is_weekend
+        description: True for Saturday and Sunday.
+        data_tests: [not_null]
+
+  - name: dim_repo
+    description: Current attributes of each NOIR repo (one row per repo). History is in dim_repo_history.
+    columns:
+      - name: repo_key
+        description: GitHub repository id.
+        data_tests: [unique, not_null]
+      - name: repo_name
+        description: Repository name.
+        data_tests: [unique, not_null]
+      - name: full_name
+        description: owner/name.
+        data_tests: [not_null]
+      - name: description
+        description: Repository description; null when unset.
+      - name: language
+        description: Primary language reported by GitHub; null when unset.
+      - name: default_branch
+        description: Default branch name.
+        data_tests: [not_null]
+      - name: is_archived
+        description: True if the repo is archived.
+        data_tests: [not_null]
+      - name: topics
+        description: Comma-separated sorted topics; empty string when none.
+        data_tests: [not_null]
+      - name: created_at
+        description: Repository creation time (UTC).
+        data_tests: [not_null]
+
+  - name: dim_repo_history
+    description: Type 2 slowly changing dimension of repo attributes, built from the snap_repo snapshot.
+    columns:
+      - name: repo_version_key
+        description: Snapshot surrogate key for one version of one repo.
+        data_tests: [unique, not_null]
+      - name: repo_key
+        description: GitHub repository id.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_repo'), field: repo_key}}
+      - name: repo_name
+        description: Repository name in this version.
+        data_tests: [not_null]
+      - name: description
+        description: Description in this version.
+      - name: language
+        description: Language in this version.
+      - name: default_branch
+        description: Default branch in this version.
+        data_tests: [not_null]
+      - name: is_archived
+        description: Archived flag in this version.
+        data_tests: [not_null]
+      - name: topics
+        description: Topics in this version.
+        data_tests: [not_null]
+      - name: valid_from
+        description: When this version was first observed.
+        data_tests: [not_null]
+      - name: valid_to
+        description: When this version was superseded; null while current.
+      - name: is_current
+        description: True for the latest version of each repo.
+        data_tests: [not_null]
+
+  - name: fct_match
+    description: Fact table, one row per completed league match.
+    columns:
+      - name: match_key
+        description: md5 of league, season, date, home team and away team.
+        data_tests: [unique, not_null]
+      - name: date_key
+        description: Match date.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_date'), field: date_key}}
+      - name: league_key
+        description: League code.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_league'), field: league_key}}
+      - name: season_key
+        description: Season code.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_season'), field: season_key}}
+      - name: home_team_key
+        description: Home team.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_team'), field: team_key}}
+      - name: away_team_key
+        description: Away team.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_team'), field: team_key}}
+      - name: home_goals
+        description: Full-time home goals.
+        data_tests: [not_null]
+      - name: away_goals
+        description: Full-time away goals.
+        data_tests: [not_null]
+      - name: result
+        description: Full-time result from the home side's view, H, D or A.
+        data_tests: [not_null, {accepted_values: {arguments: {values: ['H', 'D', 'A']}}}]
+      - name: home_points
+        description: League points earned by the home side (3, 1 or 0).
+        data_tests: [not_null]
+      - name: away_points
+        description: League points earned by the away side.
+        data_tests: [not_null]
+      - name: home_shots
+        description: Home shots; null in seasons where the source has none.
+      - name: away_shots
+        description: Away shots.
+      - name: home_shots_on_target
+        description: Home shots on target.
+      - name: away_shots_on_target
+        description: Away shots on target.
+      - name: home_yellows
+        description: Home yellow cards.
+      - name: away_yellows
+        description: Away yellow cards.
+      - name: home_reds
+        description: Home red cards.
+      - name: away_reds
+        description: Away red cards.
+
+  - name: fct_workflow_run
+    description: Fact table, one row per GitHub Actions workflow run of a NOIR repo.
+    columns:
+      - name: workflow_run_key
+        description: GitHub workflow run id.
+        data_tests: [unique, not_null]
+      - name: repo_key
+        description: Repository.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_repo'), field: repo_key}}
+      - name: date_key
+        description: UTC date the run was created.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_date'), field: date_key}}
+      - name: workflow_name
+        description: Workflow name.
+      - name: event
+        description: Trigger event (push, pull_request, schedule, ...).
+        data_tests: [not_null]
+      - name: head_branch
+        description: Branch the run executed on.
+      - name: status
+        description: GitHub run status.
+        data_tests: [not_null]
+      - name: conclusion
+        description: GitHub run conclusion; null while the run is not completed.
+      - name: ci_outcome
+        description: pass, fail, excluded (cancelled, skipped, neutral, action_required) or in_progress.
+        data_tests: [not_null, {accepted_values: {arguments: {values: ['pass', 'fail', 'excluded', 'in_progress']}}}]
+      - name: run_attempt
+        description: Attempt number (re-runs increase it).
+        data_tests: [not_null]
+      - name: duration_seconds
+        description: Seconds from run start to last update; approximates duration, null until completed.
+      - name: created_at
+        description: Run creation time (UTC).
+        data_tests: [not_null]
+
+  - name: fct_commit
+    description: Fact table, one row per commit on the default branch of a NOIR repo.
+    columns:
+      - name: commit_key
+        description: md5 of repo name and sha.
+        data_tests: [unique, not_null]
+      - name: repo_key
+        description: Repository.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_repo'), field: repo_key}}
+      - name: date_key
+        description: UTC commit date.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_date'), field: date_key}}
+      - name: commit_sha
+        description: Git commit sha.
+        data_tests: [not_null]
+      - name: author_login
+        description: Public GitHub login of the author; null when the commit email is not linked to an account. Names and emails are not extracted.
+      - name: committed_at
+        description: Commit time (UTC).
+        data_tests: [not_null]
+      - name: message_headline_length
+        description: Length of the commit subject line; the text itself is not modelled.
+        data_tests: [not_null]
+
+  - name: fct_pull_request
+    description: Fact table, one row per pull request.
+    columns:
+      - name: pull_request_key
+        description: GitHub pull request id.
+        data_tests: [unique, not_null]
+      - name: repo_key
+        description: Repository.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_repo'), field: repo_key}}
+      - name: date_key
+        description: UTC date the PR was opened.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_date'), field: date_key}}
+      - name: pull_request_number
+        description: Number within the repo.
+        data_tests: [not_null]
+      - name: state
+        description: open or closed.
+        data_tests: [not_null, {accepted_values: {arguments: {values: ['open', 'closed']}}}]
+      - name: is_draft
+        description: True while the PR is a draft.
+        data_tests: [not_null]
+      - name: author_login
+        description: Public login of the PR author.
+      - name: created_at
+        description: Opened time (UTC).
+        data_tests: [not_null]
+      - name: merged_at
+        description: Merge time (UTC); null if not merged.
+      - name: is_merged
+        description: True if merged.
+        data_tests: [not_null]
+      - name: hours_to_merge
+        description: Hours from opening to merge; null if not merged.
+
+  - name: fct_release
+    description: Fact table, one row per published (non-draft) release. Empty until the first release exists.
+    columns:
+      - name: release_key
+        description: GitHub release id.
+        data_tests: [unique, not_null]
+      - name: repo_key
+        description: Repository.
+        data_tests: [not_null]
+      - name: date_key
+        description: UTC publish date.
+        data_tests: [not_null]
+      - name: tag_name
+        description: Git tag.
+        data_tests: [not_null]
+      - name: is_prerelease
+        description: True for pre-releases.
+        data_tests: [not_null]
+      - name: published_at
+        description: Publish time (UTC).
+        data_tests: [not_null]
+
+  - name: mart_home_advantage
+    description: >
+      Home-advantage metrics per league-season, plus one row per league across all seasons (season_key = 'ALL').
+      home_win_rate is defined once, in macros/home_advantage_metrics.sql, and the report shows this column as is.
+    columns:
+      - name: home_advantage_key
+        description: md5 of league and season.
+        data_tests: [unique, not_null]
+      - name: league_key
+        description: League code.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_league'), field: league_key}}
+      - name: league_name
+        description: League display name.
+        data_tests: [not_null]
+      - name: season_key
+        description: Season code, or ALL.
+        data_tests: [not_null]
+      - name: season_label
+        description: Display label, or All seasons.
+        data_tests: [not_null]
+      - name: season_start_year
+        description: Start year of the season; 0 for the ALL rows.
+        data_tests: [not_null]
+      - name: is_single_season
+        description: False for the ALL rows.
+        data_tests: [not_null]
+      - name: is_complete_season
+        description: True when the season has all 380 matches, and for ALL rows.
+        data_tests: [not_null]
+      - name: matches
+        description: Completed matches in scope.
+        data_tests: [not_null]
+      - name: home_wins
+        description: Matches won by the home side.
+        data_tests: [not_null]
+      - name: draws
+        description: Drawn matches.
+        data_tests: [not_null]
+      - name: away_wins
+        description: Matches won by the away side.
+        data_tests: [not_null]
+      - name: home_win_rate
+        description: home_wins divided by matches. THE home win rate metric.
+        data_tests: [not_null]
+      - name: draw_rate
+        description: draws divided by matches.
+        data_tests: [not_null]
+      - name: away_win_rate
+        description: away_wins divided by matches.
+        data_tests: [not_null]
+      - name: home_win_rate_ci_low
+        description: Lower bound of a 95% normal-approximation interval for home_win_rate.
+        data_tests: [not_null]
+      - name: home_win_rate_ci_high
+        description: Upper bound of that interval.
+        data_tests: [not_null]
+      - name: avg_home_goals
+        description: Mean home goals per match.
+        data_tests: [not_null]
+      - name: avg_away_goals
+        description: Mean away goals per match.
+        data_tests: [not_null]
+      - name: home_goal_advantage
+        description: avg_home_goals minus avg_away_goals.
+        data_tests: [not_null]
+      - name: avg_home_points
+        description: Mean league points per match earned by the home side.
+        data_tests: [not_null]
+
+  - name: mart_ci_reliability
+    description: >
+      CI pass rate per repo and month, plus one all-time row per repo (grain = 'all_time', period_start null).
+      ci_pass_rate is defined once, in macros/ci_metrics.sql.
+    columns:
+      - name: ci_reliability_key
+        description: md5 of repo, grain and period.
+        data_tests: [unique, not_null]
+      - name: repo_key
+        description: Repository.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_repo'), field: repo_key}}
+      - name: repo_name
+        description: Repository name.
+        data_tests: [not_null]
+      - name: grain
+        description: month or all_time.
+        data_tests: [not_null, {accepted_values: {arguments: {values: ['month', 'all_time']}}}]
+      - name: period_start
+        description: First day of the month; null for all_time rows.
+      - name: decided_runs
+        description: Completed runs that passed or failed.
+        data_tests: [not_null]
+      - name: passed_runs
+        description: Runs concluded success.
+        data_tests: [not_null]
+      - name: failed_runs
+        description: Runs concluded failure or timed_out.
+        data_tests: [not_null]
+      - name: excluded_runs
+        description: Completed runs with another conclusion (cancelled, skipped, ...), not part of the rate.
+        data_tests: [not_null]
+      - name: ci_pass_rate
+        description: passed_runs divided by decided_runs. THE CI pass rate metric; null when no run was decided.
+      - name: median_duration_seconds
+        description: Median duration of decided runs.
+
+  - name: mart_delivery_cadence
+    description: Commits, PRs opened, PRs merged and releases per repo and ISO week. Weeks without activity have no row.
+    columns:
+      - name: delivery_cadence_key
+        description: md5 of repo and week.
+        data_tests: [unique, not_null]
+      - name: repo_key
+        description: Repository.
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_repo'), field: repo_key}}
+      - name: repo_name
+        description: Repository name.
+        data_tests: [not_null]
+      - name: week_start
+        description: Monday of the week.
+        data_tests: [not_null]
+      - name: commits
+        description: Commits that week.
+        data_tests: [not_null]
+      - name: prs_opened
+        description: Pull requests opened that week.
+        data_tests: [not_null]
+      - name: prs_merged
+        description: Pull requests merged that week.
+        data_tests: [not_null]
+      - name: releases
+        description: Releases published that week.
+        data_tests: [not_null]
+
+  - name: mart_repo_summary
+    description: One row per NOIR repo with delivery totals and the all-time CI pass rate (read from mart_ci_reliability).
+    columns:
+      - name: repo_key
+        description: Repository.
+        data_tests:
+          - unique
+          - not_null
+          - relationships: {arguments: {to: ref('dim_repo'), field: repo_key}}
+      - name: repo_name
+        description: Repository name.
+        data_tests: [unique, not_null]
+      - name: commits
+        description: Commits on the default branch.
+        data_tests: [not_null]
+      - name: active_days
+        description: Distinct UTC days with at least one commit.
+        data_tests: [not_null]
+      - name: first_commit_at
+        description: Earliest commit seen.
+      - name: last_commit_at
+        description: Latest commit seen.
+      - name: prs_opened
+        description: Pull requests opened.
+        data_tests: [not_null]
+      - name: prs_merged
+        description: Pull requests merged.
+        data_tests: [not_null]
+      - name: median_hours_to_merge
+        description: Median hours from opening to merge over merged PRs; null if none.
+      - name: releases
+        description: Published releases.
+        data_tests: [not_null]
+      - name: ci_decided_runs
+        description: Completed runs that passed or failed.
+        data_tests: [not_null]
+      - name: ci_passed_runs
+        description: Passed runs.
+        data_tests: [not_null]
+      - name: ci_failed_runs
+        description: Failed runs.
+        data_tests: [not_null]
+      - name: ci_pass_rate
+        description: All-time CI pass rate from mart_ci_reliability; null when no run was decided.
+      - name: ci_median_duration_seconds
+        description: Median duration of decided runs.
