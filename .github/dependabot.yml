@@ -14,6 +14,8 @@ updates:
     directory: /report
     schedule: { interval: weekly }
     ignore:
+      # @evidence-dev/evidence peers on exactly typescript 5.4.2.
+      - dependency-name: "typescript"
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:
