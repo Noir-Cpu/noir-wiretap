@@ -95,6 +95,11 @@ def informant_source():
         for path, meta in manifest.items():
             yield {"path": path, **meta}
 
+    @dlt.resource(name="collector_heartbeat", write_disposition="replace")
+    def heartbeat_resource() -> Iterator[dict]:
+        # Written by the collector on every clean run, even when no data file changed (unlike manifest fetched_at).
+        yield {"checked_at": json.loads(_fetch("last_checked.json"))["checked_at"]}
+
     @dlt.resource(
         name="results",
         write_disposition="merge",
@@ -116,4 +121,4 @@ def informant_source():
     def skipped_resource() -> Iterator[dict]:
         yield from parse_ledger(_fetch_optional("predictions/skipped.jsonl"), skipped=True)
 
-    return manifest_resource, results_resource, predictions_resource, skipped_resource
+    return manifest_resource, heartbeat_resource, results_resource, predictions_resource, skipped_resource

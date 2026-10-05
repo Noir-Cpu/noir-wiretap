@@ -184,7 +184,8 @@ def main() -> None:
 
     # ---------- overview
     load = q("select max(loaded_at) from staging.stg_github__repos")[0][0]
-    fetched = q("select max(fetched_at) from staging.stg_informant__collector_manifest")[0][0]
+    fetched = q("select max(checked_at) from staging.stg_informant__collector_heartbeat")[0][0]
+    changed = q("select max(last_data_change_at) from staging.stg_informant__collector_manifest")[0][0]
     counts = dict(q("""select 'matches', count(*) from marts.fct_match union all
         select 'runs', count(*) from marts.fct_workflow_run union all
         select 'commits', count(*) from marts.fct_commit union all
@@ -201,7 +202,7 @@ def main() -> None:
 <div class="stat"><b>{counts['commits']:,}</b><span>commits, {counts['repos']} repos</span></div>
 <div class="stat"><b>{counts['predictions']:,}</b><span>INFORMANT predictions scored so far</span></div>
 </div>
-<p>GitHub last loaded {fmt(load)}. INFORMANT collector last fetched {fmt(fetched)}.</p>
+<p>GitHub last loaded {fmt(load)}. INFORMANT collector last checked {fmt(fetched)}; its data last changed {fmt(changed)}.</p>
 <h2>Analyses</h2>
 <ul>
 <li><a href="/analyses/home-advantage/">Home advantage: Premier League against La Liga</a></li>

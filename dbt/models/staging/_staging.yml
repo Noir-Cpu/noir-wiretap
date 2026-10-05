@@ -100,11 +100,15 @@ models:
       - {name: away_yellows, description: Away yellows.}
       - {name: home_reds, description: Home reds.}
       - {name: away_reds, description: Away reds.}
+  - name: stg_informant__collector_heartbeat
+    description: The collector's last clean-run time (data/last_checked.json). One row.
+    columns:
+      - {name: checked_at, description: UTC time of the collector's last clean run., data_tests: [not_null]}
   - name: stg_informant__collector_manifest
     description: The collector manifest, one row per data file.
     columns:
       - {name: file_path, description: Path of the data file in noir-informant., data_tests: [unique, not_null]}
-      - {name: fetched_at, description: When the collector last fetched the file., data_tests: [not_null]}
+      - {name: last_data_change_at, description: When the collector last wrote this file because its content changed. Not a freshness signal., data_tests: [not_null]}
       - {name: row_count, description: Rows the collector recorded.}
       - {name: sha256, description: Content hash.}
   - name: stg_informant__predictions

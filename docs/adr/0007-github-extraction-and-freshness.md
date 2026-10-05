@@ -10,4 +10,4 @@ Status: accepted
 - CI pass rate is reported twice, all runs and excluding runs triggered by `dependabot[bot]` (updater runs and checks on its PRs), both defined in `macros/ci_metrics.sql` (decided by John, 2026-09-29).
 - Freshness (`dbt source freshness`, fails the nightly workflow on error):
   - `github.repos`, load time: warn 26 h, error 30 h. This is a heartbeat of our own load, since a quiet repo has no new events to measure.
-  - `informant.collector_manifest.fetched_at`: warn 12 h, error 26 h. This measures the upstream INFORMANT collector (which runs every 6 h), so a dead collector fails our build.
+  - `informant.collector_heartbeat.checked_at` (data/last_checked.json): warn 14 h, error 30 h. The collector writes it on every clean run (every 6 h), so a dead collector fails our build while a quiet stretch with no matches does not. Thresholds allow for GitHub schedule lag. The earlier rule used manifest `fetched_at`, which only changes when a data file changes, and failed the nightly on 2026-10-05 after two weeks without matches; manifest `fetched_at` is now the `last_data_change_at` column and not a freshness signal.

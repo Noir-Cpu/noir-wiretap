@@ -8,6 +8,10 @@
 - Q5: warehouse state stays in the Actions cache for now (ADR 0006).
 - Predictions format: read from `predictions/ledger.jsonl` and `skipped.jsonl` (ADR 0005, done, ledger currently empty).
 
+## Fixed 2026-10-05
+
+- Nightly failed on stale `informant.collector_manifest`: its `fetched_at` only changes when a data file changes, and there were no matches since 20 Sept. Freshness now reads the collector heartbeat `data/last_checked.json` (`checked_at`, warn 14 h, error 30 h); manifest `fetched_at` is the `last_data_change_at` column only. `tests/test_freshness.py` proves a 20-day-old manifest passes and a 40-hour-old heartbeat fails (ADR 0007).
+
 ## Actions only John can do, in order
 
 1. Set the Cloudflare secrets so the nightly workflow publishes (see docs/SETUP.md):

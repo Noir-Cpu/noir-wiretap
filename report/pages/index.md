@@ -15,7 +15,7 @@ select * from wiretap.run_status
 ```
 
 <BigValue data={freshness} value=github_loaded_at title="GitHub last loaded (UTC)" fmt="yyyy-mm-dd hh:mm" />
-<BigValue data={freshness} value=informant_collector_fetched_at title="INFORMANT collector last fetched (UTC)" fmt="yyyy-mm-dd hh:mm" />
+<BigValue data={freshness} value=informant_collector_fetched_at title="INFORMANT collector last checked (UTC)" fmt="yyyy-mm-dd hh:mm" />
 
 ## What is in the warehouse
 
