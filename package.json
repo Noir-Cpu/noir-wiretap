@@ -1,0 +1,16 @@
+{
+  "name": "noir-wiretap",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tooling for the deployed site: wrangler (deploy and local preview) and Playwright tests. The Evidence report has its own package.json in report/.",
+  "scripts": {
+    "preview": "wrangler dev --port 8787",
+    "test:e2e": "playwright test"
+  },
+  "engines": { "node": ">=22" },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "wrangler": "4.147.0"
+  }
+}
