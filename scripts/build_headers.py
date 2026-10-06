@@ -13,31 +13,54 @@ import base64
 import hashlib
 import re
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
 TEMPLATE = ROOT / "scripts" / "headers.template"
 
-INLINE_SCRIPT = re.compile(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script\s*>", re.S | re.I)
-INLINE_STYLE = re.compile(r"<style[^>]*>(?P<body>.*?)</style\s*>", re.S | re.I)
-
-
 def sha256(text: str) -> str:
     return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode("utf-8")).digest()).decode() + "'"
 
 
+class _Inline(HTMLParser):
+    """Collects the text of inline <script> and <style> elements, using a real HTML parser rather than a regex."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.scripts: list[str] = []
+        self.styles: list[str] = []
+        self._open: tuple[str, dict, list[str]] | None = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style"):
+            self._open = (tag, dict(attrs), [])
+
+    def handle_data(self, data):
+        if self._open:
+            self._open[2].append(data)
+
+    def handle_endtag(self, tag):
+        if self._open and self._open[0] == tag:
+            kind, attrs, parts = self._open
+            self._open = None
+            if kind == "style":
+                self.styles.append("".join(parts))
+            elif "src" not in attrs and attrs.get("type") in (None, "text/javascript", "module"):
+                # JSON-LD and Evidence's JSON data blocks are never executed, so CSP does not apply to them.
+                self.scripts.append("".join(parts))
+
+
+def parse_inline(html: str) -> _Inline:
+    parser = _Inline()
+    parser.feed(html)
+    parser.close()
+    return parser
+
+
 def executable_inline_scripts(html: str) -> list[str]:
-    out = []
-    for m in INLINE_SCRIPT.finditer(html):
-        attrs = m.group("attrs")
-        if "src=" in attrs:
-            continue
-        kind = re.search(r'type="([^"]*)"', attrs)
-        if kind and kind.group(1) not in ("text/javascript", "module"):
-            continue  # JSON-LD and Evidence's JSON data blocks are never executed, so CSP does not apply
-        out.append(m.group("body"))
-    return out
+    return parse_inline(html).scripts
 
 
 def main() -> None:
@@ -53,7 +76,7 @@ def main() -> None:
             sys.exit(f"{p.relative_to(ROOT)}: inline script in a static page; the static CSP forbids scripts")
         if re.search(r"<[a-z][^>]*\sstyle=", html, re.I):
             sys.exit(f"{p.relative_to(ROOT)}: style attribute in a static page; use a class")
-        styles.update(m.group("body") for m in INLINE_STYLE.finditer(html))
+        styles.update(parse_inline(html).styles)
     if len(styles) != 1:
         sys.exit(f"expected one distinct inline stylesheet across static pages, found {len(styles)}")
 
