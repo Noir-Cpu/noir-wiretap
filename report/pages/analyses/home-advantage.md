@@ -20,7 +20,7 @@ select * from wiretap.home_advantage where is_single_season and is_complete_seas
 
 ## Home win rate by season
 
-<LineChart data={complete} x=season_label y=home_win_rate series=league_name yFmt=pct1 yMin=0.3 yMax=0.55 markers=true title="Home win rate, complete seasons" />
+<LineChart data={complete} x=season_label y=home_win_rate series=league_name sort=false yFmt=pct1 yMin=0.3 yMax=0.55 markers=true title="Home win rate, complete seasons" />
 
 <DataTable data={seasons} rows=24>
   <Column id=league_name title="League" />
