@@ -7,10 +7,15 @@
     "preview": "wrangler dev --port 8787",
     "test:e2e": "playwright test"
   },
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.63.0",
     "wrangler": "4.147.0"
+  },
+  "overrides": {
+    "sharp": "^0.35.5"
   }
 }

@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
 TEMPLATE = ROOT / "scripts" / "headers.template"
 
-INLINE_SCRIPT = re.compile(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>", re.S)
-INLINE_STYLE = re.compile(r"<style[^>]*>(?P<body>.*?)</style>", re.S)
+INLINE_SCRIPT = re.compile(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script\s*>", re.S | re.I)
+INLINE_STYLE = re.compile(r"<style[^>]*>(?P<body>.*?)</style\s*>", re.S | re.I)
 
 
 def sha256(text: str) -> str:
