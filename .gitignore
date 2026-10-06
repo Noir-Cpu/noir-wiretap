@@ -12,3 +12,5 @@ node_modules
 *.log
 .dlt
 site
+test-results
+playwright-report

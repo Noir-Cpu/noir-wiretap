@@ -42,7 +42,7 @@ select * from wiretap.delivery_cadence order by week_start
   <Column id=median_hours_to_merge title="Median h to merge" fmt="0.0" />
 </DataTable>
 
-<BarChart data={weekly} x=week_start xType=category y=commits series=repo_name title="Commits per week" />
+<BarChart data={weekly} x=week_start xType=category sort=false y=commits series=repo_name title="Commits per week" />
 
 ## Findings and limits
 

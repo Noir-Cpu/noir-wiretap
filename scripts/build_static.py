@@ -10,6 +10,7 @@ Run: python scripts/build_static.py   (after `make build`)
 from __future__ import annotations
 
 import html
+import json
 import os
 import re
 import shutil
@@ -23,6 +24,10 @@ ROOT = Path(__file__).resolve().parents[1]
 DB = Path(os.environ.get("WIRETAP_DB", ROOT / "warehouse" / "wiretap.duckdb"))
 OUT = ROOT / "site"
 MIN_SCORED = 30  # keep in step with var min_scored_predictions in dbt_project.yml
+SITE_URL = os.environ.get("SITE_URL", "https://noir-wiretap.noir-cpu.workers.dev").rstrip("/")
+REPO_URL = "https://github.com/Noir-Cpu/noir-wiretap"
+OG_IMAGE = ROOT / "assets" / "og-image.png"
+OG_ALT = "NOIR / WIRETAP: a small, tested analytics warehouse over the NOIR systems."
 
 CSS = """
 :root{--ink:#1c1a17;--bone:#f0ebe0;--graphite:#5d574f;--smoke:#d9d3c6;--signal:#b3261e;--paper:#f7f4ec}
@@ -57,10 +62,15 @@ thead th{border-bottom:2px solid var(--ink)}
 .stat span{font-size:.85rem;color:var(--graphite)}
 .note{border-left:4px solid var(--signal);background:var(--paper);padding:10px 14px;margin:1rem 0}
 figure{margin:1rem 0}figcaption{font-size:.88rem;color:var(--graphite)}
-svg{max-width:100%;height:auto;display:block}
-svg text{fill:var(--ink);font:12px "IBM Plex Sans",system-ui,sans-serif}
+svg{display:block;width:100%;height:auto}
+/* Charts keep a minimum width so axis text stays about 12 px on a 320 px screen; narrower screens scroll the chart sideways (the table under it has the same numbers). */
+.chart{overflow-x:auto;border:1px solid var(--smoke);background:var(--paper)}
+.chart svg{min-width:420px}
+svg text{fill:var(--ink);font:14px "IBM Plex Sans",system-ui,sans-serif}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.9rem;margin:.4rem 0}
 .legend i{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px}
+.k-signal{background:var(--signal)}.k-ink{background:var(--ink)}.k-round{border-radius:50%}
+@media (forced-colors:active){.k-signal,.k-ink{forced-color-adjust:none}}
 footer{border-top:1px solid var(--smoke);margin-top:3rem;padding-top:16px;padding-bottom:32px;color:var(--graphite);font-size:.88rem}
 ul{padding-left:1.2rem}li{margin:.3rem 0}
 """
@@ -77,22 +87,57 @@ NAV = [
 e = html.escape
 
 
-def page(path: str, title: str, description: str, body: str, generated: str) -> str:
+def page(path: str, title: str, description: str, body: str, generated: str, kind: str = "article") -> str:
     nav = "".join(
         f'<a href="{href}"{" aria-current=page" if href == path else ""}>{e(label)}</a>' for href, label in NAV
     )
+    full_title = f"{title} | WIRETAP"
+    url = SITE_URL + path
+    image = SITE_URL + "/og-image.png"
+    ld: dict = {"@context": "https://schema.org"}
+    if path == "/":
+        ld.update({"@type": "WebSite", "name": "NOIR / WIRETAP", "url": url, "description": description,
+                   "inLanguage": "en", "publisher": {"@type": "Person", "name": "Noir-Cpu", "url": "https://github.com/Noir-Cpu"}})
+    elif kind == "article":
+        # An Article, not a Dataset: the underlying data has no published licence or download, so a Dataset record would claim more than exists.
+        ld.update({"@type": "Article", "headline": title, "description": description, "url": url, "inLanguage": "en",
+                   "image": image, "dateModified": generated[:10], "mainEntityOfPage": url,
+                   "author": {"@type": "Person", "name": "Noir-Cpu", "url": "https://github.com/Noir-Cpu"},
+                   "isPartOf": {"@type": "WebSite", "name": "NOIR / WIRETAP", "url": SITE_URL + "/"}})
+    else:
+        ld.update({"@type": "AboutPage", "name": title, "description": description, "url": url, "inLanguage": "en",
+                   "isPartOf": {"@type": "WebSite", "name": "NOIR / WIRETAP", "url": SITE_URL + "/"}})
+    ldjson = json.dumps(ld, ensure_ascii=False).replace("<", "\\u003c")
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{e(title)} | WIRETAP</title>
+<title>{e(full_title)}</title>
 <meta name="description" content="{e(description)}">
+<link rel="canonical" href="{url}">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f0ebe0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171512" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="{"article" if kind == "article" and path != "/" else "website"}">
+<meta property="og:site_name" content="NOIR / WIRETAP">
+<meta property="og:title" content="{e(full_title)}">
+<meta property="og:description" content="{e(description)}">
+<meta property="og:url" content="{url}">
+<meta property="og:image" content="{image}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{e(OG_ALT)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{e(full_title)}">
+<meta name="twitter:description" content="{e(description)}">
+<meta name="twitter:image" content="{image}">
+<meta name="twitter:image:alt" content="{e(OG_ALT)}">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23b3261e'/%3E%3C/svg%3E">
+<script type="application/ld+json">{ldjson}</script>
 <style>{CSS}</style></head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="wrap"><a class="brand" href="/">NOIR / WIRETAP</a><nav aria-label="Main">{nav}</nav></div></header>
 <main id="main"><div class="wrap">{body}</div></main>
-<footer><div class="wrap">Built {e(generated)} from the dbt marts. Source: <a href="https://github.com/Noir-Cpu/noir-wiretap">Noir-Cpu/noir-wiretap</a>.</div></footer>
+<footer><div class="wrap">Built {e(generated)} from the dbt marts. Source: <a href="{REPO_URL}">Noir-Cpu/noir-wiretap</a>.</div></footer>
 </body></html>"""
 
 
@@ -134,9 +179,16 @@ def line_chart(title: str, desc: str, labels: list[str], series: dict[str, list[
                 parts.append(f'<rect x="{x(i) - 3.5:.1f}" y="{y(v) - 3.5:.1f}" width="7" height="7" fill="{colours[n]}"/>')
     parts.append("</svg>")
     legend = "".join(
-        f'<span><i style="background:{colours[n]}{";border-radius:50%" if n == 0 else ""}"></i>{e(name)}</span>'
+        f'<span><i class="{"k-signal k-round" if n == 0 else "k-ink"}"></i>{e(name)}</span>'
         for n, name in enumerate(series))
-    return f'<figure><div class="legend">{legend}</div>{"".join(parts)}<figcaption>{e(desc)}</figcaption></figure>'
+    return chart_figure(title, desc, legend, "".join(parts))
+
+
+def chart_figure(title: str, desc: str, legend: str, svg: str) -> str:
+    # The wrapper is focusable so keyboard users can scroll a chart that is wider than the screen.
+    return (f'<figure><div class="legend">{legend}</div>'
+            f'<div class="chart" role="region" aria-label="Chart: {e(title)}" tabindex="0">{svg}</div>'
+            f'<figcaption>{e(desc)} The same numbers are in the table below.</figcaption></figure>')
 
 
 def bar_chart(title: str, desc: str, groups: list[tuple[str, float | None, float | None]]) -> str:
@@ -156,15 +208,17 @@ def bar_chart(title: str, desc: str, groups: list[tuple[str, float | None, float
             parts.append(f'<rect x="{ml}" y="{yy}" width="{max(pw * v, 1):.1f}" height="14" fill="{col}"/>'
                          f'<text x="{ml + pw * v + 5:.1f}" y="{yy + 11}">{v * 100:.1f}%</text>')
     parts.append("</svg>")
-    legend = ('<span><i style="background:var(--signal)"></i>All runs</span>'
-              '<span><i style="background:var(--ink)"></i>Excluding Dependabot runs</span>')
-    return f'<figure><div class="legend">{legend}</div>{"".join(parts)}<figcaption>{e(desc)}</figcaption></figure>'
+    legend = ('<span><i class="k-signal"></i>All runs</span>'
+              '<span><i class="k-ink"></i>Excluding Dependabot runs</span>')
+    return chart_figure(title, desc, legend, "".join(parts))
 
 
 def md(path: str) -> str:
     text = (ROOT / "docs" / "analyses" / path).read_text(encoding="utf-8")
     text = re.sub(r"^# .*\n", "", text, count=1)  # page has its own h1
     out = markdown.markdown(text, extensions=["tables", "sane_lists"])
+    # The page supplies the h2 "Findings and limits"; headings from the markdown nest under it.
+    out = re.sub(r"<(/?)h2>", r"<\1h3>", out)
     n = 0
 
     def wrap(_m):
@@ -224,7 +278,7 @@ def main() -> None:
     overall = [r for r in rows if not r[8]]
     body = ['<p class="case">ANALYSIS 1</p><h1>Home advantage: Premier League against La Liga</h1>',
             '<p class="lede"><code>home_win_rate</code> is one column of the <code>mart_home_advantage</code> dbt model: home wins divided by completed matches. The chart and tables read that column as it is. The season in progress is left out of the chart.</p>',
-            line_chart("Home win rate by season", "Home win rate by season, complete seasons 2016/17 to 2025/26, Premier League and La Liga.", short, series, 0.30, 0.55),
+            line_chart("Home win rate by season", f"Home win rate by season, complete seasons {seasons[0]} to {seasons[-1]}, Premier League and La Liga.", short, series, 0.30, 0.55),
             "<h2>By season</h2>",
             table("Home win rate by league and season", ["League", "Season", "Matches", "Home win", "95% low", "95% high"],
                   [[r[0], r[1] + ("" if r[7] else " (in progress)"), r[3], pct(r[4]), pct(r[5]), pct(r[6])]
@@ -233,7 +287,7 @@ def main() -> None:
             table("Home win rate across all seasons in the warehouse", ["League", "Matches", "Home win", "95% low", "95% high"],
                   [[r[0], f"{r[3]:,}", pct(r[4]), pct(r[5]), pct(r[6])] for r in overall]),
             "<h2>Findings and limits</h2>", md("01-home-advantage.md")]
-    pages["/analyses/home-advantage/"] = ("Home advantage, Premier League and La Liga", "Home win rate by season in the Premier League and La Liga, 2016/17 to 2025/26, with intervals and limits.", "".join(body))
+    pages["/analyses/home-advantage/"] = ("Home advantage, Premier League and La Liga", f"Home win rate by season in the Premier League and La Liga, {seasons[0]} to {seasons[-1]}, with 95% intervals, the findings and their limits.", "".join(body))
 
     # ---------- delivery and CI
     ci = q("""select r.repo_name, r.commits, r.active_days, r.prs_merged, r.median_hours_to_merge, r.ci_decided_runs,
@@ -285,14 +339,39 @@ def main() -> None:
 
     if OUT.exists():
         for child in OUT.iterdir():
-            if child.name != "explore":
+            if child.name not in ("explore", "_headers"):
                 shutil.rmtree(child) if child.is_dir() else child.unlink()
     for path, (title, desc, body) in pages.items():
         target = OUT / path.strip("/") / "index.html" if path != "/" else OUT / "index.html"
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(page(path, title, desc, body, generated), encoding="utf-8")
-    (OUT / "robots.txt").write_text("User-agent: *\nAllow: /\n")
-    print(f"wrote {len(pages)} pages to {OUT}")
+        kind = "article" if path.startswith("/analyses/") else "about"
+        target.write_text(page(path, title, desc, body, generated, kind), encoding="utf-8")
+
+    # 404: served by Workers assets (not_found_handling = 404-page) for any unknown path.
+    not_found = page("/404.html", "Page not found", "This page does not exist on the WIRETAP site.", """
+<p class="case">404</p><h1>Page not found</h1>
+<p class="lede">There is nothing at this address. The pages that exist are listed below.</p>
+<ul>
+<li><a href="/">Overview</a></li>
+<li><a href="/analyses/home-advantage/">Home advantage: Premier League against La Liga</a></li>
+<li><a href="/analyses/delivery-and-ci/">Delivery cadence and CI reliability</a></li>
+<li><a href="/analyses/calibration/">Calibration of INFORMANT predictions</a></li>
+<li><a href="/about/">Sources, limits and exclusions</a></li>
+</ul>""", generated, "about")
+    # Keep the error page out of the index and out of the canonical set.
+    not_found = (not_found.replace('<link rel="canonical" href="' + SITE_URL + '/404.html">', '<meta name="robots" content="noindex">')
+                 .replace('<meta property="og:url" content="' + SITE_URL + '/404.html">', ""))
+    not_found = re.sub(r'<script type="application/ld\+json">.*?</script>', "", not_found, flags=re.S)
+    (OUT / "404.html").write_text(not_found, encoding="utf-8")
+
+    # Sitemap lists the static pages only. /explore is noindex (see docs/adr/0010-security-headers-and-seo.md).
+    urls = "".join(f"<url><loc>{SITE_URL}{path}</loc></url>" for path in pages)
+    (OUT / "sitemap.xml").write_text(
+        f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
+    # No Disallow for /explore: a crawler that cannot fetch a page never sees its noindex header.
+    (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {SITE_URL}/sitemap.xml\n")
+    shutil.copyfile(OG_IMAGE, OUT / "og-image.png")
+    print(f"wrote {len(pages)} pages + 404, sitemap, robots to {OUT}")
 
 
 if __name__ == "__main__":

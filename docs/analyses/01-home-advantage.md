@@ -4,7 +4,7 @@ Data: INFORMANT results, `data/results/E0` and `SP1`, seasons 2016/17 to 2025/26
 
 ## Numbers
 
-| | Matches | Home win rate | 95% interval |
+| League | Matches | Home win rate | 95% interval |
 | --- | --- | --- | --- |
 | Premier League, all seasons | 3,850 | 44.5% | 42.9% to 46.1% |
 | La Liga, all seasons | 3,869 | 45.5% | 43.9% to 47.1% |
