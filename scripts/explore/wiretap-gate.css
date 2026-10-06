@@ -1,0 +1,29 @@
+/* Gate shown on /explore/* until the visitor asks for the interactive explorer. Tokens match the static site. */
+html:not(.wt-live) body > div:not(.wt-gate) { display: none !important; }
+html.wt-live .wt-gate { display: none; }
+.wt-gate {
+  --ink: #1c1a17; --bone: #f0ebe0; --graphite: #5d574f; --smoke: #d9d3c6; --signal: #b3261e; --paper: #f7f4ec;
+  min-height: 100vh; background: var(--bone); color: var(--ink);
+  font: 1rem/1.55 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; padding: 24px 16px 48px;
+}
+html[data-theme="dark"] .wt-gate {
+  --ink: #f0ebe0; --bone: #171512; --graphite: #b5ada1; --smoke: #3a362f; --signal: #ff6b5e; --paper: #1f1c18;
+}
+.wt-gate main { max-width: 40rem; margin: 0 auto; }
+.wt-gate .wt-case { font: 600 .8rem "IBM Plex Mono", ui-monospace, monospace; color: var(--signal); letter-spacing: .08em; margin: 1rem 0 0; }
+.wt-gate h1 { font: 800 clamp(1.7rem, 6vw, 2.4rem)/1.1 "Archivo", system-ui, sans-serif; margin: .4rem 0 1rem; }
+.wt-gate p { max-width: 36rem; }
+.wt-gate a { color: var(--ink); text-underline-offset: .18em; }
+.wt-gate a:hover { color: var(--signal); }
+.wt-gate .wt-btn {
+  font: 700 1rem "IBM Plex Sans", system-ui, sans-serif; min-height: 44px; padding: 8px 20px; cursor: pointer;
+  background: var(--ink); color: var(--bone); border: 2px solid var(--ink);
+}
+.wt-gate .wt-btn:hover { background: var(--signal); border-color: var(--signal); color: var(--bone); }
+.wt-gate .wt-btn:disabled { cursor: progress; opacity: .75; }
+.wt-gate :focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
+.wt-gate .wt-note { border-left: 4px solid var(--signal); background: var(--paper); padding: 10px 14px; margin: 1rem 0; }
+@media (prefers-reduced-motion: reduce) {
+  #__evidence_project_splash .draw-path { animation: none !important; }
+  * { scroll-behavior: auto !important; }
+}

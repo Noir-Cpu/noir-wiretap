@@ -36,9 +36,11 @@ site: report/node_modules/.installed
 	rm -rf report/build
 	cd report && npm run sources && npm run build:strict
 	node scripts/externalize_wasm.mjs
+	node scripts/postprocess_explore.mjs
 	rm -rf site && mkdir -p site
 	cp -r report/build site/explore
 	.venv/bin/python scripts/build_static.py
+	.venv/bin/python scripts/build_headers.py
 
 deploy: site
 	npx wrangler deploy

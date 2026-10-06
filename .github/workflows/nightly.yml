@@ -1,47 +1,65 @@
 name: Nightly
-# Rebuilds the warehouse and publishes the Evidence site. Commits nothing to main.
+# Rebuilds the warehouse and publishes the site. Commits nothing to main.
 on:
   schedule:
     - cron: "17 1 * * *"
   workflow_dispatch:
 permissions:
   contents: read
-  actions: write # cache save
 concurrency: { group: nightly, cancel-in-progress: false }
 jobs:
   nightly:
+    # Forks never deploy: scheduled runs only exist on the default branch, secrets are not passed to forks,
+    # and this guard stops a copy of the workflow in another repository from trying.
+    if: github.repository == 'Noir-Cpu/noir-wiretap'
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with: { python-version: "3.12", cache: pip }
-      - uses: actions/setup-node@v7
-        with: { node-version: 22, cache: npm, cache-dependency-path: report/package-lock.json }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            report/package-lock.json
+            package-lock.json
       # The warehouse file carries dlt incremental state and the repo snapshot history (SCD type 2).
       # The cache is best-effort: if it is evicted, history restarts. See docs/adr/0006-warehouse-state-in-actions-cache.md.
-      - uses: actions/cache/restore@v6
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         id: warehouse
         with:
           path: warehouse
           key: warehouse-${{ github.run_id }}
           restore-keys: warehouse-
+      # No secret is set while dependencies install (pip and npm run third-party install scripts).
       - run: make setup
       - run: make extract
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Fails the workflow (and skips the deploy) if INFORMANT's collector or our GitHub load is older than its threshold.
       - run: make freshness
       - run: make build
-      - uses: actions/cache/save@v6
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: warehouse
           key: warehouse-${{ github.run_id }}
       - run: make site
+      - run: npm ci
+      # The secrets are named in exactly one step, the deploy. This step only records whether they exist (true or false).
+      - name: Check deploy credentials
+        id: creds
+        env:
+          HAS_CREDENTIALS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: echo "available=$HAS_CREDENTIALS" >> "$GITHUB_OUTPUT"
       - name: Deploy to Cloudflare Workers assets
-        if: env.CLOUDFLARE_API_TOKEN != ''
-        run: npx --yes wrangler@4 deploy
+        if: steps.creds.outputs.available == 'true' && github.ref == 'refs/heads/main'
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Deploy skipped
-        if: env.CLOUDFLARE_API_TOKEN == ''
-        run: echo "::warning::CLOUDFLARE_API_TOKEN is not set, site built but not deployed. See docs/SETUP.md."
+        if: steps.creds.outputs.available != 'true' || github.ref != 'refs/heads/main'
+        run: echo "::warning::Site built but not deployed (Cloudflare credentials missing, or not running on main). See docs/SETUP.md."
