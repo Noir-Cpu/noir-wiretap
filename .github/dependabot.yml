@@ -10,6 +10,16 @@ updates:
     groups:
       pip:
         patterns: ["*"]
+  # Deploy and test tooling: wrangler, Playwright, axe.
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      tooling:
+        patterns: ["*"]
   - package-ecosystem: npm
     directory: /report
     schedule: { interval: weekly }
