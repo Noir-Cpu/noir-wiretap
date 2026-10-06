@@ -27,4 +27,5 @@
 ## Still open
 
 - Calibration on real data (waits for the ledger). DISPATCH and WITNESS sources (do not exist yet).
-- Evidence at `/explore` is slow to open (10.6 MiB, in-browser DuckDB); the static pages are the default.
+- Evidence at `/explore` now opens as a short notice and loads the engine only on request (ADR 0010). Still open: whether the DuckDB engine is needed at all (the report renders from prerendered query results without it).
+- After the first deploy of the header change: `curl -I https://noir-wiretap.noir-cpu.workers.dev/` and `/explore/` and check there is exactly one Content-Security-Policy on each.

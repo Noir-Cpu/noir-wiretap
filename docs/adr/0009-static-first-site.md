@@ -15,5 +15,5 @@ Consequences:
 
 - The default pages are fast and keyboard/screen-reader friendly. The written findings come from `docs/analyses/*.md`, one source for the repo and the site.
 - Two renderers show the same marts. Neither computes a metric, so they cannot disagree; the static charts are simpler than Evidence's (no hover, no sorting).
-- Evidence's DataTable scroll container is made keyboard-focusable by a small injected script after the build (`scripts/externalize_wasm.mjs`), which will need revisiting if Evidence changes its markup.
+- Evidence's DataTable scroll container is made keyboard-focusable by a small script (`scripts/explore/wiretap-gate.js`, copied into the build by `scripts/postprocess_explore.mjs`), which will need revisiting if Evidence changes its markup.
 - Evidence cannot store an empty query result (zero-row parquet fails the build), so its source queries for the empty prediction marts return one all-null placeholder row; the page checks the status query first.
