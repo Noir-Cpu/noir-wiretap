@@ -1,0 +1,26 @@
+# Generated into site/_headers by scripts/build_headers.py. Edit this template, not the output.
+# Why each policy is what it is: docs/adr/0010-security-headers-and-seo.md.
+#
+# Cloudflare merges every matching rule. `!` removes a header an earlier rule set, so /explore/* swaps the
+# strict static-page CSP for its own instead of sending two policies (browsers enforce both, which would
+# intersect them and break the explorer).
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: {{STATIC_CSP}}
+
+/og-image.png
+  Cache-Control: public, max-age=86400
+
+/explore/*
+  ! Content-Security-Policy
+  Content-Security-Policy: {{EXPLORE_CSP}}
+  X-Robots-Tag: noindex, follow
+
+/explore/_app/immutable/*
+  Cache-Control: public, max-age=31536000, immutable
